@@ -22,23 +22,13 @@ pipeline{
         }
         stage('Dependency Check') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
-        // stage('Test Code') {
-        //     steps {
-        //         sh 'mvn test -Dcheckstyle.skip'
-        //     }
-        // }
         stage('Build Artifact') {
             steps {
                 sh 'mvn clean package -DskipTests -Dcheckstyle.skip'
-            }
-        }
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t $NEXUS_REPO/petclinicapps .'
             }
         }
         stage('Push Artifact to Nexus Repo') {
@@ -47,18 +37,37 @@ pipeline{
                 classifier: '',
                 file: 'target/spring-petclinic-2.4.2.war',
                 type: 'war']],
-                credentialsId: 'nexus-creds',
+                credentialsId: 'nexus-cred',
                 groupId: 'Petclinic',
-                nexusUrl: 'nexus.tundeafod.click',
+                nexusUrl: 'nexus.dobetabeta.shop',
                 nexusVersion: 'nexus3',
                 protocol: 'https',
                 repository: 'nexus-repo',
                 version: '1.0'
             }
         }
-        stage('Trivy fs Scan') {
+        stage('Build Docker Image') {
             steps {
-                sh "trivy fs . > trivyfs.txt"
+                sh 'docker build -t $NEXUS_REPO/petclinicapps .'
+            }
+        }
+        stage('Trivy Image Scan') {
+            steps {
+                echo “Analyse with Trivy”
+                // Run the Trivy image scan and save the output in HTML format
+                sh "trivy image --format template -o trivy-image-report.html $NEXUS_REPO/petclinicapps"
+                // Archive the HTML report as a build artifact
+                archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
+                // Publish the HTML report
+                publishHTML(target: [
+                    reportDir: '.',
+                    reportFiles: 'trivy-image-report.html',
+                    reportName: "Trivy Image CVE Report",
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true,
+                    includeInIndex: true,
+                    indexFilename: 'index.html'
+                ])
             }
         }
         stage('Log Into Nexus Docker Repo') {
@@ -71,11 +80,11 @@ pipeline{
                 sh 'docker push $NEXUS_REPO/petclinicapps'
             }
         }
-        stage('Trivy image Scan') {
-            steps {
-                sh "trivy image $NEXUS_REPO/petclinicapps > trivyfs.txt"
-            }
-        }
+        // stage('Trivy image Scan') {
+        //     steps {
+        //         sh "trivy image $NEXUS_REPO/petclinicapps > trivyfs.txt"
+        //     }
+        // }
         stage('Deploy to stage') {
             steps {
                 sshagent(['ansible-key']) {
