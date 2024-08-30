@@ -51,48 +51,53 @@ pipeline{
                 sh 'docker build -t $NEXUS_REPO/petclinicapps .'
             }
         }
-        stage('Trivy Image Scan') {
+        stage('Trivy image Scan') {
             steps {
-                script {
-                // Run Trivy scan and save the output in JSON format
-                    sh 'trivy image --format json -o trivy-image-report.json $NEXUS_REPO/petclinicapps || true'
-                    // Convert JSON report to HTML
-                    writeFile file: 'convert_to_html.py', text: '''
-    import json
-    import sys
-    def convert_json_to_html(json_file, html_file):
-        with open(json_file, 'r') as f:
-            data = json.load(f)
-        # Basic HTML conversion, for better formatting consider using libraries like Jinja2
-        html_content = '<html><head><title>Trivy Image Scan Report</title></head><body>'
-        html_content += '<h1>Trivy Image Scan Report</h1>'
-        html_content += '<h2>Summary</h2>'
-        html_content += '<pre>' + json.dumps(data, indent=4) + '</pre>'
-        html_content += '</body></html>'
-        with open(html_file, 'w') as f:
-            f.write(html_content)
-    if __name__ == "__main__":
-        if len(sys.argv) != 3:
-            print("Usage: python convert_to_html.py <input_json> <output_html>")
-            sys.exit(1)
-        convert_json_to_html(sys.argv[1], sys.argv[2])
-    '''
-            // Convert JSON to HTML
-                    sh 'python3 convert_to_html.py trivy-image-report.json trivy-image-report.html'
-            // Archive the HTML report as a build artifact
-                    archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
-            // Publish the HTML report
-                    publishHTML(target: [
-                        reportDir: '.',
-                        reportFiles: 'trivy-image-report.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true,
-                        includeInIndex: true,
-                        indexFilename: 'index.html'
-                    ])
-                }
+                sh "trivy image $NEXUS_REPO/petclinicapps > trivyimage.txt"
             }
         }
+    //     stage('Trivy Image Scan') {
+    //         steps {
+    //             script {
+    //             // Run Trivy scan and save the output in JSON format
+    //                 sh 'trivy image --format json -o trivy-image-report.json $NEXUS_REPO/petclinicapps || true'
+    //                 // Convert JSON report to HTML
+    //                 writeFile file: 'convert_to_html.py', text: '''
+    // import json
+    // import sys
+    // def convert_json_to_html(json_file, html_file):
+    //     with open(json_file, 'r') as f:
+    //         data = json.load(f)
+    //     # Basic HTML conversion, for better formatting consider using libraries like Jinja2
+    //     html_content = '<html><head><title>Trivy Image Scan Report</title></head><body>'
+    //     html_content += '<h1>Trivy Image Scan Report</h1>'
+    //     html_content += '<h2>Summary</h2>'
+    //     html_content += '<pre>' + json.dumps(data, indent=4) + '</pre>'
+    //     html_content += '</body></html>'
+    //     with open(html_file, 'w') as f:
+    //         f.write(html_content)
+    // if __name__ == "__main__":
+    //     if len(sys.argv) != 3:
+    //         print("Usage: python convert_to_html.py <input_json> <output_html>")
+    //         sys.exit(1)
+    //     convert_json_to_html(sys.argv[1], sys.argv[2])
+    // '''
+    //         // Convert JSON to HTML
+    //                 sh 'python3 convert_to_html.py trivy-image-report.json trivy-image-report.html'
+    //         // Archive the HTML report as a build artifact
+    //                 archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
+    //         // Publish the HTML report
+    //                 publishHTML(target: [
+    //                     reportDir: '.',
+    //                     reportFiles: 'trivy-image-report.html',
+    //                     keepAll: true,
+    //                     alwaysLinkToLastBuild: true,
+    //                     includeInIndex: true,
+    //                     indexFilename: 'index.html'
+    //                 ])
+    //             }
+    //         }
+    //     }
         // stage('Trivy Image Scan') {
         //     steps {
         //         sh 'echo Analyse with Trivy'
@@ -122,11 +127,6 @@ pipeline{
                 sh 'docker push $NEXUS_REPO/petclinicapps'
             }
         }
-        // stage('Trivy image Scan') {
-        //     steps {
-        //         sh "trivy image $NEXUS_REPO/petclinicapps > trivyfs.txt"
-        //     }
-        // }
         stage('Deploy to stage') {
             steps {
                 sshagent(['ansible-key']) {
