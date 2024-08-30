@@ -88,16 +88,18 @@ pipeline{
         stage('Deploy to stage') {
             steps {
                 sshagent(['ansible-key']) {
-                    sh 'ssh -t -t ec2-user@3.8.33.146 -o strictHostKeyChecking=no "ansible-playbook -i /etc/ansible/stage-hosts /etc/ansible/stage-playbook.yml"'
+                    sh '''
+                        ssh -t -t -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no ubuntu@54.75.46.83" ubuntu@10.0.4.44 "ansible-playbook -i /etc/ansible/stage-hosts /etc/ansible/stage-playbook.yml"
+                    '''
                 }
             }
         }
         stage('check stage website availability') {
             steps {
                  sh "sleep 90"
-                 sh "curl -s -o /dev/null -w \"%{http_code}\" https://stage.tundeafod.click"
+                 sh "curl -s -o /dev/null -w \"%{http_code}\" https://stage.dobetabeta.shop"
                 script {
-                    def response = sh(script: "curl -s -o /dev/null -w \"%{http_code}\" https://stage.tundeafod.click", returnStdout: true).trim()
+                    def response = sh(script: "curl -s -o /dev/null -w \"%{http_code}\" https://stage.dobetabeta.shop", returnStdout: true).trim()
                     if (response == "200") {
                         slackSend(color: 'good', message: "The stage petclinic java application is up and running with HTTP status code ${response}.", tokenCredentialId: 'slack')
                     } else {
@@ -116,16 +118,18 @@ pipeline{
         stage('Deploy to prod') {
             steps {
                 sshagent(['ansible-key']) {
-                    sh 'ssh -t -t ec2-user@3.8.33.146 -o strictHostKeyChecking=no "ansible-playbook -i /etc/ansible/prod-hosts /etc/ansible/prod-playbook.yml"'
+                    sh '''
+                        ssh -t -t -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no ubuntu@54.75.46.83" ubuntu@10.0.4.44 "ansible-playbook -i /etc/ansible/prod-hosts /etc/ansible/prod-playbook.yml"
+                    '''
                 }
             }
         }
         stage('check prod website availability') {
             steps {
                  sh "sleep 90"
-                 sh "curl -s -o /dev/null -w \"%{http_code}\" https://prod.tundeafod.click"
+                 sh "curl -s -o /dev/null -w \"%{http_code}\" https://prod.dobetabeta.shop"
                 script {
-                    def response = sh(script: "curl -s -o /dev/null -w \"%{http_code}\" https://prod.tundeafod.click", returnStdout: true).trim()
+                    def response = sh(script: "curl -s -o /dev/null -w \"%{http_code}\" https://prod.dobetabeta.shop", returnStdout: true).trim()
                     if (response == "200") {
                         slackSend(color: 'good', message: "The prod petclinic java application is up and running with HTTP status code ${response}.", tokenCredentialId: 'slack')
                     } else {
