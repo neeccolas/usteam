@@ -53,7 +53,7 @@ pipeline{
         }
         stage('Trivy Image Scan') {
             steps {
-                echo “Analyse with Trivy”
+                sh echo “Analyse with Trivy”
                 // Run the Trivy image scan and save the output in HTML format
                 sh "trivy image --format template -o trivy-image-report.html $NEXUS_REPO/petclinicapps"
                 // Archive the HTML report as a build artifact
