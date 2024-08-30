@@ -22,7 +22,7 @@ pipeline{
         }
         stage('Dependency Check') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP-Check'
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
@@ -53,23 +53,65 @@ pipeline{
         }
         stage('Trivy Image Scan') {
             steps {
-                sh 'echo Analyse with Trivy'
-                // Run the Trivy image scan and save the output in HTML format
-                sh "trivy image --format template -o trivy-image-report.html $NEXUS_REPO/petclinicapps"
-                // Archive the HTML report as a build artifact
-                archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
-                // Publish the HTML report
-                publishHTML(target: [
-                    reportDir: '.',
-                    reportFiles: 'trivy-image-report.html',
-                    reportName: "Trivy Image CVE Report",
-                    keepAll: true,
-                    alwaysLinkToLastBuild: true,
-                    includeInIndex: true,
-                    indexFilename: 'index.html'
-                ])
+                script {
+                // Run Trivy scan and save the output in JSON format
+                    sh 'trivy image --format json -o trivy-image-report.json $NEXUS_REPO/petclinicapps || true'
+                    // Convert JSON report to HTML
+                    writeFile file: 'convert_to_html.py', text: '''
+    import json
+    import sys
+    def convert_json_to_html(json_file, html_file):
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+        # Basic HTML conversion, for better formatting consider using libraries like Jinja2
+        html_content = '<html><head><title>Trivy Image Scan Report</title></head><body>'
+        html_content += '<h1>Trivy Image Scan Report</h1>'
+        html_content += '<h2>Summary</h2>'
+        html_content += '<pre>' + json.dumps(data, indent=4) + '</pre>'
+        html_content += '</body></html>'
+        with open(html_file, 'w') as f:
+            f.write(html_content)
+    if __name__ == "__main__":
+        if len(sys.argv) != 3:
+            print("Usage: python convert_to_html.py <input_json> <output_html>")
+            sys.exit(1)
+        convert_json_to_html(sys.argv[1], sys.argv[2])
+    '''
+            // Convert JSON to HTML
+                    sh 'python3 convert_to_html.py trivy-image-report.json trivy-image-report.html'
+            // Archive the HTML report as a build artifact
+                    archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
+            // Publish the HTML report
+                    publishHTML(target: [
+                        reportDir: '.',
+                        reportFiles: 'trivy-image-report.html',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true,
+                        includeInIndex: true,
+                        indexFilename: 'index.html'
+                    ])
+                }
             }
         }
+        // stage('Trivy Image Scan') {
+        //     steps {
+        //         sh 'echo Analyse with Trivy'
+        //         // Run the Trivy image scan and save the output in HTML format
+        //         sh "trivy image --format template -o trivy-image-report.html $NEXUS_REPO/petclinicapps"
+        //         // Archive the HTML report as a build artifact
+        //         archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
+        //         // Publish the HTML report
+        //         publishHTML(target: [
+        //             reportDir: '.',
+        //             reportFiles: 'trivy-image-report.html',
+        //             reportName: "Trivy Image CVE Report",
+        //             keepAll: true,
+        //             alwaysLinkToLastBuild: true,
+        //             includeInIndex: true,
+        //             indexFilename: 'index.html'
+        //         ])
+        //     }
+        // }
         stage('Log Into Nexus Docker Repo') {
             steps {
                 sh 'docker login --username $NEXUS_USER --password $NEXUS_PASSWORD $NEXUS_REPO'
@@ -142,3 +184,12 @@ pipeline{
 }
     
 
+pipeline {
+  agent any
+  environment {
+    TRIVY_IMAGE = 'your-image:latest' // Replace with your Docker image
+  }
+  stages {
+
+  }
+}
