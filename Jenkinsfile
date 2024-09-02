@@ -54,7 +54,7 @@ pipeline{
         stage('Trivy image Scan') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
-                sh "trivy image $NEXUS_REPO/petclinicapps > trivyimage.txt"
+                sh "trivy image $NEXUS_REPO/petclinicapps > trivyfs.txt"
             }
         }
     //     stage('Trivy Image Scan') {
