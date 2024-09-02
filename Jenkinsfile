@@ -28,7 +28,7 @@ pipeline{
         }
         stage('Build Artifact') {
             steps {
-                sh 'mvn clean package -DskipTests -Dcheckstyle.skip'
+                sh 'mvn clean package'
             }
         }
         stage('Push Artifact to Nexus Repo') {
@@ -131,7 +131,7 @@ pipeline{
             steps {
                 sshagent(['ansible-key']) {
                     sh '''
-                        ssh -t -t -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no ubuntu@54.75.46.83" ubuntu@10.0.4.44 "ansible-playbook -i /etc/ansible/stage-hosts /etc/ansible/stage-playbook.yml"
+                        ssh -t -t -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no ubuntu@34.254.89.91" ubuntu@10.0.4.42 "ansible-playbook -i /etc/ansible/stage-hosts /etc/ansible/stage-playbook.yml"
                     '''
                 }
             }
@@ -161,7 +161,7 @@ pipeline{
             steps {
                 sshagent(['ansible-key']) {
                     sh '''
-                        ssh -t -t -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no ubuntu@54.75.46.83" ubuntu@10.0.4.44 "ansible-playbook -i /etc/ansible/prod-hosts /etc/ansible/prod-playbook.yml"
+                        ssh -t -t -o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no ubuntu@34.254.89.91" ubuntu@10.0.4.42 "ansible-playbook -i /etc/ansible/prod-hosts /etc/ansible/prod-playbook.yml"
                     '''
                 }
             }
